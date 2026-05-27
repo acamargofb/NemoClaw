@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Good Vibes</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f4f0;
+      --card-bg: #0d1117;
+      --teal: #3dd9c5;
+      --teal2: #4ade80;
+      --text: #1a1a1a;
+      --hint: #888;
+      --tag-bg: #1a2a1a;
+      --tag-text: #3dd9c5;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+    }
+
+    /* ── Landing screen ── */
+    #landing-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px 40px;
+    }
+
+    .logo-icon {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: linear-gradient(135deg, #3dd9c5, #6e8efb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; margin-bottom: 16px;
+    }
+
+    .app-title {
+      font-size: 2rem; font-weight: 700; color: var(--teal);
+      letter-spacing: -0.5px; margin-bottom: 4px;
+    }
+
+    .app-subtitle {
+      font-size: 0.85rem; color: var(--hint); margin-bottom: 6px;
+    }
+
+    .app-powered {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 1px;
+      color: #aaa; text-transform: uppercase; margin-bottom: 24px;
+    }
+
+    .stats-bar {
+      display: flex; width: 100%; max-width: 380px;
+      background: #f5f5f5; border-radius: 16px;
+      padding: 16px 0; margin-bottom: 28px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+    .stat { flex: 1; text-align: center; border-right: 1px solid #e0e0e0; }
+    .stat:last-child { border-right: none; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; color: var(--teal); }
+    .stat-label {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.5px;
+      color: var(--hint); text-transform: uppercase; margin-top: 2px;
+    }
+
+    .section-label {
+      align-self: flex-start; max-width: 380px; width: 100%;
+      font-size: 1rem; font-weight: 600; color: var(--hint);
+      margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::before {
+      content: ""; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--teal);
+    }
+
+    /* ── Guru card ── */
+    .guru-card {
+      width: 100%; max-width: 380px;
+      background: var(--card-bg); border-radius: 20px;
+      padding: 20px; color: #fff;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    }
+
+    .guru-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+    }
+
+    .guru-avatar {
+      width: 60px; height: 60px; border-radius: 14px;
+      background: linear-gradient(135deg, #2a3a2a, #1a2a1a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; flex-shrink: 0; position: relative;
+    }
+    .guru-avatar::after {
+      content: ""; position: absolute; bottom: 2px; right: 2px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #22c55e; border: 2px solid var(--card-bg);
+    }
+
+    .guru-info { flex: 1; }
+    .guru-name { font-size: 1.05rem; font-weight: 700; }
+    .guru-handle { font-size: 0.78rem; color: #888; margin-bottom: 4px; }
+    .guru-followers { font-size: 0.72rem; color: #666; }
+
+    .guru-bio {
+      font-size: 0.82rem; color: #aaa; line-height: 1.5; margin-bottom: 14px;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .tag {
+      padding: 5px 12px; border-radius: 20px;
+      background: var(--tag-bg); color: var(--tag-text);
+      font-size: 0.75rem; font-weight: 500;
+    }
+
+    .chat-btn {
+      width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+      background: linear-gradient(90deg, var(--teal), var(--teal2));
+      color: #fff; font-size: 0.95rem; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity 0.15s;
+    }
+    .chat-btn:active { opacity: 0.85; }
+
+    /* ── Chat screen ── */
+    #chat-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100dvh;
+      background: #0d1117;
+      color: #fff;
+      padding: 20px 20px 28px;
+      gap: 14px;
+    }
+
+    .chat-header {
+      display: flex; align-items: center; gap: 12px;
+      align-self: stretch;
+    }
+
+    .back-btn {
+      background: none; border: none; color: var(--teal);
+      font-size: 1.3rem; cursor: pointer; padding: 4px 8px 4px 0;
+      line-height: 1;
+    }
+
+    .chat-avatar {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, #2a3a2a, #1a2a1a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; position: relative; flex-shrink: 0;
+    }
+    .chat-avatar.speaking::after {
+      content: ""; position: absolute; inset: -6px; border-radius: 16px;
+      border: 2px solid var(--teal); animation: ripple 1s infinite;
+    }
+    @keyframes ripple {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    .chat-name { font-size: 0.95rem; font-weight: 600; }
+    .chat-status { font-size: 0.72rem; color: #888; }
+
+    .transcript-box {
+      flex: 1; width: 100%; max-width: 420px;
+      overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .msg {
+      font-size: 0.88rem; line-height: 1.5;
+      padding: 10px 14px; border-radius: 12px; max-width: 85%;
+    }
+    .msg.user {
+      background: #1a2a3a; color: #cde; align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.agent {
+      background: #1a2a1a; color: #dfe; align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.hint {
+      color: #555; font-style: italic; font-size: 0.78rem;
+      align-self: center; background: none; padding: 4px 0;
+    }
+
+    .talk-area {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+
+    .talk-btn {
+      width: 72px; height: 72px; border-radius: 50%; border: none; cursor: pointer;
+      background: linear-gradient(135deg, var(--teal), var(--teal2));
+      color: #fff; font-size: 1.6rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.1s;
+      box-shadow: 0 4px 20px rgba(61,217,197,0.3);
+    }
+    .talk-btn:active, .talk-btn.active {
+      transform: scale(0.92);
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      box-shadow: 0 4px 20px rgba(231,76,60,0.4);
+    }
+
+    #session-hint { font-size: 0.78rem; color: #555; }
+  </style>
+</head>
+<body>
+
+  <!-- Landing screen -->
+  <div id="landing-screen">
+    <div class="logo-icon">🌿</div>
+    <div class="app-title">Good Vibes</div>
+    <div class="app-subtitle">AI-Powered Wellness Guidance</div>
+    <div class="app-powered">Powered by Maloka × NemoClaw</div>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-value">2</div>
+        <div class="stat-label">AI Twins</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">618K</div>
+        <div class="stat-label">Followers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Available</div>
+      </div>
+    </div>
+
+    <div class="section-label">Choose Your AI Guru</div>
+
+    <div class="guru-card">
+      <div class="guru-header">
+        <div class="guru-avatar">🧘</div>
+        <div class="guru-info">
+          <div class="guru-name">Max Lowenstein</div>
+          <div class="guru-handle">@healingmotions</div>
+          <div class="guru-followers">📷 218K followers</div>
+        </div>
+      </div>
+      <div class="guru-bio">
+        Registered Dietitian, breathwork facilitator &amp; yoga teacher.
+        Science-backed wellness with a warm, grounded approach.
+      </div>
+      <div class="tags">
+        <span class="tag">🌬 Breathwork</span>
+        <span class="tag">🧘 Yoga</span>
+        <span class="tag">🥗 Nutrition</span>
+        <span class="tag">🧠 Meditation</span>
+      </div>
+      <button class="chat-btn" id="chat-with-max-btn">
+        Chat with Max →
+      </button>
+    </div>
+  </div>
+
+  <!-- Chat screen -->
+  <div id="chat-screen">
+    <div class="chat-header">
+      <button class="back-btn" id="back-btn">←</button>
+      <div class="chat-avatar" id="chat-avatar">🧘</div>
+      <div>
+        <div class="chat-name">Max Lowenstein</div>
+        <div class="chat-status" id="conn-status">Connecting…</div>
+      </div>
+    </div>
+
+    <div class="transcript-box" id="transcript"></div>
+
+    <div class="talk-area">
+      <button class="talk-btn" id="talk-btn">🎙</button>
+      <div id="session-hint">Hold to talk</div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

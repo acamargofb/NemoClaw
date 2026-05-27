@@ -242,6 +242,23 @@ if [ "$(id -u)" -ne 0 ]; then
   echo "[gateway] openclaw gateway launched (pid $GATEWAY_PID)"
   start_auto_pair
   print_dashboard_urls
+
+  # Start Telegram bridge if token is provided (non-root mode)
+  if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+    touch /tmp/telegram-bridge.log
+    chmod 600 /tmp/telegram-bridge.log
+    nohup node /usr/local/bin/telegram-bridge-railway.js >>/tmp/telegram-bridge.log 2>&1 &
+    echo "[telegram] Bridge started (pid $!)"
+  fi
+
+  # Start Gmail bridge if OAuth credentials are provided (non-root mode)
+  if [ -n "${GMAIL_CLIENT_ID:-}" ] || [ -n "${GMAIL_ADDRESS:-}" ]; then
+    touch /tmp/gmail-bridge.log
+    chmod 600 /tmp/gmail-bridge.log
+    nohup node /usr/local/bin/gmail-bridge.js >>/tmp/gmail-bridge.log 2>&1 &
+    echo "[gmail] Bridge started (pid $!)"
+  fi
+
   wait "$GATEWAY_PID"
   exit $?
 fi
@@ -259,15 +276,14 @@ if [ ${#NEMOCLAW_CMD[@]} -gt 0 ]; then
   exec gosu sandbox "${NEMOCLAW_CMD[@]}"
 fi
 
-# SECURITY: Protect gateway log from sandbox user tampering
+# Use chmod 622 (owner+world-writable) so root without cap_dac_override
+# and gosu-switched users (gateway, sandbox) can all write to these files.
+# cap_dac_override is dropped by capsh above, so chown+600 would break redirects.
 touch /tmp/gateway.log
-chown gateway:gateway /tmp/gateway.log
-chmod 600 /tmp/gateway.log
+chmod 622 /tmp/gateway.log
 
-# Separate log for auto-pair so sandbox user can write to it
 touch /tmp/auto-pair.log
-chown sandbox:sandbox /tmp/auto-pair.log
-chmod 600 /tmp/auto-pair.log
+chmod 622 /tmp/auto-pair.log
 
 # Verify ALL symlinks in .openclaw point to expected .openclaw-data targets.
 # Dynamic scan so future OpenClaw symlinks are covered automatically.
@@ -286,13 +302,33 @@ done
 # SECURITY: The sandbox user cannot kill this process because it runs
 # under a different UID. The fake-HOME attack no longer works because
 # the agent cannot restart the gateway with a tampered config.
-nohup gosu gateway "$OPENCLAW" gateway run >/tmp/gateway.log 2>&1 &
+gosu gateway "$OPENCLAW" gateway run &
 GATEWAY_PID=$!
 echo "[gateway] openclaw gateway launched as 'gateway' user (pid $GATEWAY_PID)"
 
 start_auto_pair
 print_dashboard_urls
 
-# Keep container running by waiting on the gateway process.
-# This script is PID 1 (ENTRYPOINT); if it exits, Docker kills all children.
-wait "$GATEWAY_PID"
+# Start Telegram bridge if token is provided (Railway direct mode)
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+  touch /tmp/telegram-bridge.log
+  chmod 622 /tmp/telegram-bridge.log
+  nohup gosu sandbox node /usr/local/bin/telegram-bridge-railway.js >>/tmp/telegram-bridge.log 2>&1 &
+  echo "[telegram] Bridge started (pid $!)"
+fi
+
+# Start Gmail bridge if OAuth credentials are provided
+if [ -n "${GMAIL_CLIENT_ID:-}" ] || [ -n "${GMAIL_ADDRESS:-}" ]; then
+  touch /tmp/gmail-bridge.log
+  chmod 622 /tmp/gmail-bridge.log
+  nohup gosu sandbox node /usr/local/bin/gmail-bridge.js >>/tmp/gmail-bridge.log 2>&1 &
+  echo "[gmail] Bridge started (pid $!)"
+fi
+
+# Wait for the gateway process.
+# On Railway and other PaaS platforms, the gateway may fail immediately because
+# OpenShell requires Linux namespaces not available in restricted container runtimes.
+# In that case, keep the container alive so auxiliary services (Telegram bridge) continue.
+wait "$GATEWAY_PID" || true
+echo "[gateway] Gateway process exited — keeping container alive for auxiliary services (Telegram bridge)"
+tail -f /dev/null

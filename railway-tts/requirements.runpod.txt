@@ -1,0 +1,7 @@
+runpod>=1.6.0
+hume-tada>=0.1.0
+torch==2.7.0+cu126
+torchaudio==2.7.0+cu126
+librosa>=0.10.2
+soundfile>=0.12.1
+numpy>=1.26.0

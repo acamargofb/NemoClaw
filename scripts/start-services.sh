@@ -97,7 +97,7 @@ stop_service() {
 show_status() {
   mkdir -p "$PIDDIR"
   echo ""
-  for svc in telegram-bridge cloudflared; do
+  for svc in telegram-bridge voice-agent-bridge voice-server cloudflared; do
     if is_running "$svc"; then
       echo -e "  ${GREEN}●${NC} $svc  (PID $(cat "$PIDDIR/$svc.pid"))"
     else
@@ -118,6 +118,8 @@ show_status() {
 do_stop() {
   mkdir -p "$PIDDIR"
   stop_service cloudflared
+  stop_service voice-server
+  stop_service voice-agent-bridge
   stop_service telegram-bridge
   info "All services stopped."
 }
@@ -145,6 +147,38 @@ do_start() {
   if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
     SANDBOX_NAME="$SANDBOX_NAME" start_service telegram-bridge \
       node "$REPO_DIR/scripts/telegram-bridge.js"
+  fi
+
+  # Voice agent bridge (HTTP micro-server for the voice pipeline)
+  SANDBOX_NAME="$SANDBOX_NAME" start_service voice-agent-bridge \
+    node "$REPO_DIR/scripts/voice-agent-bridge.js"
+
+  # Voice server (FastAPI WebSocket pipeline: STT → NemoClaw → Chatterbox TTS)
+  UVICORN_BIN="${UVICORN_BIN:-}"
+  if [ -z "$UVICORN_BIN" ]; then
+    for candidate in \
+      "$HOME/personaplex/.venv/bin/uvicorn" \
+      "$REPO_DIR/.venv/bin/uvicorn" \
+      "$(command -v uvicorn 2>/dev/null || true)"; do
+      if [ -x "$candidate" ]; then
+        UVICORN_BIN="$candidate"
+        break
+      fi
+    done
+  fi
+
+  if [ -f "$REPO_DIR/voice/requirements.txt" ] && [ -n "$UVICORN_BIN" ]; then
+    VOICE_AGENT_BRIDGE_URL="http://127.0.0.1:3099" \
+    VOICE_SAMPLES_DIR="$REPO_DIR/voice/voice_samples" \
+    TTS_DEVICE="${TTS_DEVICE:-${PERSONAPLEX_DEVICE:-mps}}" \
+    RUNPOD_ENDPOINT_ID="${RUNPOD_ENDPOINT_ID:-}" \
+    RUNPOD_API_KEY="${RUNPOD_API_KEY:-}" \
+    RAILWAY_TTS_URL="${RAILWAY_TTS_URL:-}" \
+    RAILWAY_TTS_API_KEY="${RAILWAY_TTS_API_KEY:-}" \
+    start_service voice-server \
+      bash -c "cd '$REPO_DIR/voice' && '$UVICORN_BIN' server:app --host 0.0.0.0 --port 8765 --ws-ping-interval 60 --ws-ping-timeout 120"
+  else
+    warn "voice server skipped — uvicorn not found. Set UVICORN_BIN or install deps: cd voice && pip install -r requirements.txt"
   fi
 
   # 3. cloudflared tunnel
@@ -187,6 +221,17 @@ do_start() {
     echo "  │  Telegram:    bridge running                        │"
   else
     echo "  │  Telegram:    not started (no token)                │"
+  fi
+  if is_running voice-server; then
+    if [ -n "${RUNPOD_ENDPOINT_ID:-}" ]; then
+      echo "  │  Voice:       server running (GPU TTS via RunPod)   │"
+    elif [ -n "${RAILWAY_TTS_URL:-}" ]; then
+      echo "  │  Voice:       server running (GPU TTS via Railway)  │"
+    else
+      echo "  │  Voice:       server running (local MPS TTS)        │"
+    fi
+  else
+    printf "  │  %-51s│\n" "Voice:       not started"
   fi
 
   echo "  │                                                     │"

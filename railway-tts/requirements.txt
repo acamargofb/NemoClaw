@@ -1,0 +1,9 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+chatterbox-tts>=0.1.7
+setuptools>=75.0.0
+torchaudio>=2.6.0
+librosa>=0.10.2
+soundfile>=0.12.1
+numpy>=1.26.0

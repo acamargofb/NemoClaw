@@ -41,8 +41,10 @@ RUN npm ci --omit=dev
 RUN mkdir -p /sandbox/.nemoclaw/blueprints/0.1.0 \
     && cp -r /opt/nemoclaw-blueprint/* /sandbox/.nemoclaw/blueprints/0.1.0/
 
-# Copy startup script
+# Copy startup script and auxiliary bridges
 COPY scripts/nemoclaw-start.sh /usr/local/bin/nemoclaw-start
+COPY scripts/telegram-bridge-railway.js /usr/local/bin/telegram-bridge-railway.js
+COPY scripts/gmail-bridge.js /usr/local/bin/gmail-bridge.js
 RUN chmod +x /usr/local/bin/nemoclaw-start
 
 # Build args for config that varies per deployment.
@@ -149,4 +151,5 @@ RUN sha256sum /sandbox/.openclaw/openclaw.json > /sandbox/.openclaw/.config-hash
 # Entrypoint runs as root to start the gateway as the gateway user,
 # then drops to sandbox for agent commands. See nemoclaw-start.sh.
 ENTRYPOINT ["/usr/local/bin/nemoclaw-start"]
-CMD ["/bin/bash"]
+# No CMD — entrypoint starts the gateway directly.
+# For an interactive shell: docker run -it --entrypoint /bin/bash <image>

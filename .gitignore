@@ -18,6 +18,15 @@ draft_newsletter_*
 research/
 specs/
 vdr-notes/
+log1.txt
+status.txt
+voice/voice_samples/
+railway-tts/voice.wav
+railway-tts/output.wav
+railway-tts/voice_b64.txt
+railway-tts/enroll.json
+railway-tts/synthesize_response.json
+*.rid
 
 # Security: secrets, credentials, and keys
 *_ecdsa

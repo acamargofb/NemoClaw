@@ -1,0 +1,21 @@
+FROM pytorch/pytorch:2.7.0-cuda12.6-cudnn9-devel
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libsndfile1 \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.runpod.txt .
+RUN pip install --no-cache-dir -r requirements.runpod.txt \
+    --index-url https://download.pytorch.org/whl/cu126 \
+    --extra-index-url https://pypi.org/simple
+
+COPY runpod_handler.py .
+
+# TADA_MODEL: HumeAI/tada-1b (faster/cheaper) or HumeAI/tada-3b-ml (higher quality)
+ENV TTS_DEVICE=cuda
+ENV TADA_MODEL=HumeAI/tada-1b
+
+CMD ["python", "-u", "runpod_handler.py"]
